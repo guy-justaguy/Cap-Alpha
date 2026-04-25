@@ -19,5 +19,6 @@ if you want to compile please follow these instructions:
 15. An ISO file called `kernel.iso` should appear.
 16. Use QEMU OVMF to boot this ISO.
  If you encounter any problems during the compilation process, please contact <aydin.nawaf@gmail.com> or <tungsahuur1234@gmail.com>
+
     you want, you can use the build.sh by using
      `chmod +x build.sh && ./build.sh`
