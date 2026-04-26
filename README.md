@@ -24,3 +24,4 @@ if you want to compile please follow these instructions:
 
     you want, you can use the build.sh by using
      `chmod +x build.sh && ./build.sh`
+Also, there is a pre-built image in the realeases.
