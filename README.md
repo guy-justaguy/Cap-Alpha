@@ -1,7 +1,7 @@
 # Cap-Alpha
 Language: C
 
-Cap-Alpha is an operating system kernel based on the 64-bit UEFI architecture. This operating system is still in alpha. Thus, the name Cap-Alpha. This OS is not Unix based but, it has PE and ELF support. This kernel is still in development so everything may not work as expected. This kernel project ahas a basic mouse cursor. A compsitor will be implemented. If you want to contribute, please read CONTIBUTE.md . Running in QEMU OVMF is recommended. You may need to edit some files for your specific configuration.
+Cap-Alpha is an operating system kernel based on the 64-bit UEFI architecture. This operating system is still in alpha. Thus, the name Cap-Alpha. This OS is not Unix based but, it has PE and ELF support. This kernel is still in development so everything may not work as expected. This kernel project has a basic mouse cursor. A compsitor will be implemented. If you want to contribute, please read CONTIBUTE.md . Running in QEMU OVMF is recommended. You may need to edit some files for your specific configuration.
 
 if you want to compile please follow these instructions:
 1. you have to be on Linux to use these commands. 
