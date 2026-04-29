@@ -66,9 +66,6 @@ void IDTLOAD() {
     set_idt_gate(14, addr);
     set_idt_gate(13, addr);
     set_idt_gate(44, addr);
-    if (set_idt_gate == 6) {
-        COURRMOV();
-  }
 
 
     // Setup the 10-byte pointer for 64-bit lidt
@@ -79,6 +76,16 @@ void IDTLOAD() {
     __asm__ __volatile__("lidt %0" :: "m"(idt_ptr_struct));
 }
 
-void idt_handler_c() {
-  asm volatile("sti");
-}
+void idt_handler_c(uint64_t intnum)
+ {
+    if (intnum == 44) {
+        COURRMOV();
+    }
+    // send EOI to PICs
+    if (intnum >= 40) {
+        outb(0xA0, 0x20); // Slave PIC
+    }
+    outb(0x20, 0x20); // Master PIC
+
+ asm volatile("sti");
+ }
