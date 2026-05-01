@@ -215,3 +215,41 @@ struct virtio_gpu_ctrl_hdr hdr;
 uint32_t map_info;
 uint32_t padding;
 };
+struct virtio_gpu_resource_unmap_blob {
+struct virtio_gpu_ctrl_hdr hdr;
+uint32_t resource_id;
+uint32_t padding;
+};
+struct virtio_gpu_cursor_pos {
+uint32_t scanout_id;
+uint32_t x;
+uint32_t y;
+uint32_t padding;
+};  
+struct virtio_gpu_update_cursor {
+struct virtio_gpu_ctrl_hdr hdr;
+struct virtio_gpu_cursor_pos pos;
+uint32_t resource_id;
+uint32_t hot_x;
+uint32_t hot_y;
+uint32_t padding;
+};
+struct virtio_gpu_resource_unmap_blob {
+struct virtio_gpu_ctrl_hdr hdr;
+uint32_t resource_id;
+uint32_t padding;
+};
+struct virtio_gpu_cursor_pos {
+uint32_t scanout_id;
+uint32_t x;
+uint32_t y;
+uint32_t padding;
+};
+struct virtio_gpu_update_cursor {
+struct virtio_gpu_ctrl_hdr hdr;
+struct virtio_gpu_cursor_pos pos;
+uint32_t resource_id;
+uint32_t hot_x;
+uint32_t hot_y;
+uint32_t padding;
+};
