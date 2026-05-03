@@ -1,7 +1,25 @@
 #include <stdint.h>
 #include "virtiogpu.h"
-
+uint16_t len;
+#define VIRTQ_DESC_F_AVAIL (1 << 7)
+#define VIRTQ_DESC_F_USED (1 << 15)
+#define VIRTQ_DESC_F_WRITE 2
+#define VIRTQ_DESC_F_NEXT 1
+/* This means the element contains a table of descriptors. */
+#define VIRTQ_DESC_F_INDIRECT 4
 #define ALIGN(x) (((x) + qalign) & ~qalign);
+/* Enable events */
+#define RING_EVENT_FLAGS_ENABLE 0x0
+/* Disable events */
+#define RING_EVENT_FLAGS_DISABLE 0x1
+/*
+* Enable events for a specific descriptor
+* (as specified by Descriptor Ring Change Event Offset/Wrap Counter).
+*/
+/* Only valid if VIRTIO_F_EVENT_IDX has been negotiated. */
+#define RING_EVENT_FLAGS_DESC 0x2
+/* The value 0x3 is reserved */
+
 extern unsigned char cursorwhite[];
 extern unsigned int cursorwhite_raw_len;
 extern void outl(uint32_t port, uint32_t value);
@@ -73,4 +91,80 @@ struct virtq_avail avail;
 uint8_t pad[ Padding ];
 struct virtq_used used;
 };
+struct virtq_desc {
+/* Address (guest-physical). */
+uint16_t addr;
+/* Length. */
+uint16_t len;
+/* This marks a buffer as continuing via the next field. */
+#define VIRTQ_DESC_F_NEXT 1
+/* This marks a buffer as device write-only (otherwise device read-only). */
+#define VIRTQ_DESC_F_WRITE 2
+/* This means the buffer contains a list of buffer descriptors. */
+#define VIRTQ_DESC_F_INDIRECT 4
+/* The flags as indicated above. */
+uint16_t flags;
+/* Next field if flags & NEXT */
+uint16_t next;
+};
+struct indirect_descriptor_table {
+/* The actual descriptors (16 bytes each) */
+struct virtq_desc desc[len / 16];
+};
+
+struct virtq_avail {
+#define VIRTQ_AVAIL_F_NO_INTERRUPT 1
+uint16_t flags;
+uint16_t idx;
+uint16_t ring[1024];
+};
+uint16_t used_event; /* Only if VIRTIO_F_EVENT_IDX */
+};
+struct virtq_used {
+#define VIRTQ_USED_F_NO_NOTIFY 1
+uint16_t flags;
+uint16_t idx;
+struct virtq_used_elem ring[1024];
+uint16_t avail_event; /* Only if VIRTIO_F_EVENT_IDX */
+};
+/* uint32_t is used here for ids for padding reasons. */
+struct virtq_used_elem {
+    /* Index of start of used descriptor chain. */
+uint32_t id;
+/*
+* The number of bytes written into the device writable portion of
+* the buffer described by the descriptor chain.
+*/
+uint32_t len;
+avail -> ring[avail->idx % qsz] = head;
+avail->ring[(avail->idx + added++) % qsz] = head;
+avail->idx += added;
+
+virtq_disable_used_buffer_notifications(vq);
+for (;;) {
+if (vq->last_seen_used != le16_to_cpu(virtq->used.idx)) {
+virtq_enable_used_buffer_notifications(vq);
+mb();
+if (vq->last_seen_used != le16_to_cpu(virtq->used.idx))
+break;
+virtq_disable_used_buffer_notifications(vq);
 }
+};
+struct virtq_used_elem *e = virtq.used->ring[vq->last_seen_used%vsz];
+process_buffer(e);
+vq->last_seen_used++;
+
+struct pvirtq_indirect_descriptor_table {
+/* The actual descriptor structures (struct pvirtq_desc each) */
+struct pvirtq_desc desc[len / sizeof(struct pvirtq_desc)];
+};
+struct pvirtq_desc {
+/* Buffer Address. */
+uint64_t addr;
+/* Buffer Length. */
+uint32_t len;
+/* Buffer ID. */
+uint16_t id;
+/* The flags depending on descriptor type. */
+uint16_t flags;
+};
