@@ -100,10 +100,12 @@ void virtio_main() {
  struct virtq_avail idx;
  struct virtq_avail ring;
  struct virtq virtq;
+ struct virtq_used_elem;
+ struct virtq_desc virtq_desc;
+ struct 
 vq ->last_seen_used++;
 process_buffer(e);
 uint32_t added;
-uint32_t *avail;
 uint32_t width = 64;
 uint32_t height = 64;
 uint64_t offset = (uint64_t)cursorwhite;
@@ -114,7 +116,7 @@ uint32_t qsz = QUEUE_SIZE;
 uint32_t len;
 uint32_t format = VIRTIO_GPU_FORMAT_B8G8R8A8_UNORM;
 virtq_avail.idx += added;
-struct pvirtq_desc desc[len = sizeof(pvirtq_desc)];
+struct virtq_desc desc[len = sizeof(virtq_desc)];
 
 struct virtq_used_elem *e = virtq_used.ring[vq->last_seen_used%qsz];
 attach_cmd.hdr = hdr;
@@ -138,7 +140,7 @@ virtq_disable_used_buffer_notifications(vq);
 unsigned static virtq_size(unsigned int qsz) {
 return ALIGN(sizeof(struct virtq_desc)*qsz + sizeof(uint16_t)*(3 + qsz))
 + ALIGN(sizeof(uint16_t)*3 + sizeof(struct virtq_used_elem)*qsz);
-avail -> ring[avail->idx % qsz] = head;
-avail ->ring[(avail->idx + added++) % qsz] = head;
+virtio_avail -> ring[avail->idx % qsz] = head;
+virtio_avail ->ring[(avail->idx + added++) % qsz] = head;
 }
 }
