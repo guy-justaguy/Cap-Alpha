@@ -3,13 +3,12 @@
 
 #include <stdint.h>
 #include "virtiogpu.h"
-#include "cursorwhite.h"
 
 
 
-/**EXTERN DECL**/
+/**DECL**/
 
-
+extern unsigned char cursorwhite[];
 extern void outl(uint16_t port, uint32_t value);
 extern uint32_t inl(uint16_t port);
 
@@ -53,12 +52,9 @@ struct virtio_gpu_transfer_to_host_2d transfer_cmd;
 
 /**STATIC DEFINITION**/
 
-unsigned static virtq_size(unsigned int qsz);
-
 
 
 /**VIRTQ STRUCTS**/
-
 
 struct virtq_desc {
 uint16_t addr;
@@ -68,11 +64,8 @@ uint16_t ring[QUEUE_SIZE];
 
 
 
-struct virtq {
-struct virtq_desc desc[QUEUE_SIZE];
-struct virtq_avail;
-uint8_t pad[3];
-struct virtq_used;
+struct virtq_used_elem {
+uint32_t id;
 } __attribute__((__packed__));
 
 
@@ -80,7 +73,7 @@ struct virtq_used;
 struct virtq_avail {
 uint16_t flags;
 uint16_t idx;
-uint16_t ring[1024];
+uint16_t ring[QUEUE_SIZE];
 uint16_t used_event;
 } __attribute__((__packed__));
 
@@ -90,15 +83,18 @@ struct virtq_used {
 uint16_t flags;
 uint16_t idx;
 uint16_t avail_event;
+uint16_t ring[QUEUE_SIZE];
 } __attribute__((__packed__));
 
 
 
-struct virtq_used_elem ring[1024];
-struct virtq_used_elem {
-uint32_t id;
-} __attribute__((__packed__));
 
+struct virtq {
+struct virtq_desc desc[QUEUE_SIZE];
+struct virtq_avail avail;
+uint8_t pad[3];
+struct virtq_used used;
+} __attribute__((__packed__));
 
 
 
@@ -109,52 +105,85 @@ uint32_t last_seen_used;
 
 
 
+void virtq_disable_used_buffer_notifications(struct vq *vq) {}
+
+
+
 /**FUNCS**/
 
 uint32_t pcieFINDVIRTIO_GPU(uint32_t bus, uint32_t device, uint32_t offset, uint32_t value) {
 uint32_t CMD_ADRR = (1 << 31) | (bus << 16) | (device << 11) | (value << 8) | offset;
-        inl(0xCF8);
-        outl(0xCF8, CMD_ADRR);
-        outl(0xCFC, 0x03);
-        if (inl(0xCFC) != 0x1AF41050) {
-        return 0; // NOT A VIRTIO GPU DEVICE!!!
-         }
+inl(0xCF8);
+outl(0xCF8, CMD_ADRR);
+outl(0xCFC, 0x03);
+if (inl(0xCFC) != 0x1AF41050) {
+return 0; // NOT A VIRTIO GPU DEVICE!!!
+}
 }
 
-void mb();
+void mb() {
 
-void virtio_main() {
- pcieFINDVIRTIO_GPU(0, 0, 2, 0);
+        __asm__ __volatile__ ("" ::: "memory");
 
- 
- // STRUCTS IN FUNC //
+}
 
- struct vq *vq;
- struct virtq_desc virtq_used;
- struct virtq_avail virtq_avail;
- struct virtq_avail idx;
- struct virtq_avail ring;
- struct virtq virtq;
- struct virtq_used_elem;
- struct virtq_desc virtq_desc;
- struct virtio_gpu_resource_create_2d;
- struct virtio_gpu_set_scanout;
- struct virtio_desc;
- struct virtq_avail virtq_avail;
-
-
- //  INTEGERS IN FUNC //
 
 uint32_t padding = 0;
 uint32_t qalign = 4096;
 uint32_t qsz = QUEUE_SIZE;
+uint32_t added;
+uint16_t head;
+struct virtq_desc virtq_used;
+struct virtq_used virtq_avail;
+struct virtq_avail idx;
+struct virtq_avail ring;
+struct virtq_avail used;
+struct virtq_used avail;
+
+ unsigned static virtq_size(unsigned int qsz) {
+    uint32_t qalign = 4096; 
+return ALIGN(sizeof(struct virtq_desc)*qsz + sizeof(uint16_t)*(3 + qsz)) + 
+ALIGN(sizeof(struct virtq_used_elem) * qsz);
+virtq_avail.ring[avail.idx % qsz] = head;
+virtq_avail.ring[avail.idx + added++ % qsz] = head;
+}
+uint32_t virtio_main() {
+pcieFINDVIRTIO_GPU(0, 0, 2, 0);
+
+ 
+// STRUCTS IN FUNC //
+ 
+
+
+struct vq *vq;
+virtq_disable_used_buffer_notifications(vq);
+struct virtq_desc virtq_used;
+struct virtq_used virtq_avail;
+struct virtq_avail idx;
+struct virtq_avail ring;
+struct virtq virtq;
+struct virtq_desc virtq_desc;
+struct virtio_gpu_resource_create_2d;
+struct virtio_gpu_set_scanout;
+struct virtio_desc;
+struct virtq_avail used;
+struct virtq_used avail;
+
+
+//  INTEGERS IN FUNC //
+
+uint32_t padding = 0;
+uint32_t qalign = 4096;
+uint32_t qsz = QUEUE_SIZE;
+uint32_t added;
+uint16_t head;
 
 
 
 // VIRTIO-GPU COMMANDS //
- vq ->last_seen_used++;
+vq ->last_seen_used++;
 
- attach_cmd.hdr = hdr;
+attach_cmd.hdr = hdr;
 attach_cmd.resource_id = 1;
 attach_cmd.nr_entries = 1;
 VIRTIO_GPU_CMD_SET_SCANOUT;
@@ -163,20 +192,13 @@ VIRTIO_GPU_CMD_RESOURCE_ATTACH_BACKING;
 VIRTIO_GPU_CMD_RESOURCE_FLUSH;
 
 
-
-virtq_disable_used_buffer_notifications(vq);
 for(;;) {
-if (vq->last_seen_used != le16_to_cpu(virtq.virtq_used.idx)) {
-virtq_enable_used_buffer_notifications(vq);
+if (vq->last_seen_used != le16_to_cpu(virtq.used.idx)) {
+virtq_disable_used_buffer_notifications(vq);
 mb();
-if (vq->last_seen_used != le16_to_cpu(virtq.virtq_used.idx))
+if (vq->last_seen_used != le16_to_cpu(virtq.used.idx))
 break;
 virtq_disable_used_buffer_notifications(vq);
 }
 }
-virtq_size(qsz); {
-return ALIGN(sizeof(struct virtq_desc)*qsz + sizeof(uint16_t)*(3 + qsz))
-+ ALIGN(sizeof(uint16_t)*3 + sizeof(struct virtq_used_elem)*qsz);
-virtq_avail -> ring[avail->idx % qsz] = head;
-virtq_avail ->ring[(avail->idx + added++) % qsz] = head;
 }

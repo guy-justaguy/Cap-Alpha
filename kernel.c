@@ -8,14 +8,16 @@ extern void HYDRMEM();
 extern void IDTLOAD();
 extern void initmouse();
 // extern void SYSPE();
+extern void virtio_main();
 
 void GLDMAIN() {
 IDTLOAD();
     LINUZSYS();
         HYDRMEM();
             initmouse();
-          COURRMOV();
-            FORRGPBSC();
+            virtio_main();
+         // COURRMOV();
+           // FORRGPBSC();
                 // EXECUTECOMMAND();
                     // SYSPE();
                         // SHLLHANDL();
