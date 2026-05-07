@@ -8,7 +8,7 @@
 
 /**DECL**/
 
-extern unsigned char cursorwhite[];
+extern uint64_t cursorwhite[4096];
 extern void outl(uint16_t port, uint32_t value);
 extern uint32_t inl(uint16_t port);
 
@@ -35,26 +35,6 @@ extern uint32_t inl(uint16_t port);
 #define le16_to_cpu(x) (x)
 
 
-
-/**STRUCTS**/
-
-
-struct virtio_gpu_ctrl_hdr hdr;
-struct VIRTIO_GPU_CMD_RESOURCE_CREATE_2D;
-struct virtio_gpu_resource_attach_backing attach_cmd;
-struct virtio_gpu_resource_attach_backing;
-struct indirect_descriptor_table;
-struct VIRTIO_GPU_FORMAT_B8G8R8A8_UNORM;
-struct VIRTIO_GPU_CMD_TRANSFER_TO_HOST_2D;
-struct virtio_gpu_transfer_to_host_2d transfer_cmd;
-
-
-
-/**STATIC DEFINITION**/
-
-
-
-/**VIRTQ STRUCTS**/
 
 struct virtq_desc {
 uint16_t addr;
@@ -88,7 +68,6 @@ uint16_t ring[QUEUE_SIZE];
 
 
 
-
 struct virtq {
 struct virtq_desc desc[QUEUE_SIZE];
 struct virtq_avail avail;
@@ -106,7 +85,6 @@ uint32_t last_seen_used;
 
 
 void virtq_disable_used_buffer_notifications(struct vq *vq) {}
-
 
 
 /**FUNCS**/
@@ -148,27 +126,25 @@ virtq_avail.ring[avail.idx % qsz] = head;
 virtq_avail.ring[avail.idx + added++ % qsz] = head;
 }
 uint32_t virtio_main() {
-pcieFINDVIRTIO_GPU(0, 0, 2, 0);
+pcieFINDVIRTIO_GPU(0, 0, 4, 0);
 
  
-// STRUCTS IN FUNC //
+// VIRTQ STRUCTS //
  
 
 
 struct vq *vq;
 virtq_disable_used_buffer_notifications(vq);
+
 struct virtq_desc virtq_used;
 struct virtq_used virtq_avail;
 struct virtq_avail idx;
 struct virtq_avail ring;
 struct virtq virtq;
 struct virtq_desc virtq_desc;
-struct virtio_gpu_resource_create_2d;
-struct virtio_gpu_set_scanout;
 struct virtio_desc;
 struct virtq_avail used;
 struct virtq_used avail;
-
 
 //  INTEGERS IN FUNC //
 
@@ -180,12 +156,39 @@ uint16_t head;
 
 
 
+// VIRTIO-GPU STRUCTS //
+
+struct virtio_gpu_mem_entry cmd_mem_entry;
+cmd_mem_entry.addr = (uint64_t)cursorwhite;
+cmd_mem_entry.length = 16389;
+cmd_mem_entry.padding;
+
+
+struct virtio_gpu_resource_create_2d create_cmd; 
+create_cmd.resource_id = 1;
+create_cmd.format = VIRTIO_GPU_FORMAT_B8G8R8A8_UNORM;
+create_cmd.width = 64;
+create_cmd.height = 64;
+
+
+
+struct virtio_gpu_resource_attach_backing cmd_attach;
+cmd_attach.resource_id = 1;
+cmd_attach.nr_entries = 4;
+
+
+
+struct virtio_gpu_update_cursor update_cmd;
+update_cmd.resource_id = 1;
+update_cmd.hot_x = 0;
+update_cmd.hot_y = 0;
+update_cmd.padding = 0;
+
+
+
 // VIRTIO-GPU COMMANDS //
 vq ->last_seen_used++;
 
-attach_cmd.hdr = hdr;
-attach_cmd.resource_id = 1;
-attach_cmd.nr_entries = 1;
 VIRTIO_GPU_CMD_SET_SCANOUT;
 VIRTIO_GPU_CMD_RESOURCE_CREATE_2D;
 VIRTIO_GPU_CMD_RESOURCE_ATTACH_BACKING;
