@@ -101,9 +101,10 @@ return 0; // NOT A VIRTIO GPU DEVICE!!!
 
 void mb() {
 
-        __asm__ __volatile__ ("" ::: "memory");
+        __asm__ __volatile__ ("mfence" ::: "memory");
 
 }
+
 
 
 uint32_t padding = 0;
@@ -117,6 +118,17 @@ struct virtq_avail idx;
 struct virtq_avail ring;
 struct virtq_avail used;
 struct virtq_used avail;
+uint32_t memtype64_istrue;
+uint32_t memtype64_isfalse;
+uint32_t memtype32_istrue;
+uint32_t memtype32_isfalse;
+uint32_t bar_high;
+uint64_t bar_low;
+uint32_t offset;
+uint64_t offset_64;
+uint64_t total_offset;
+
+
 
  unsigned static virtq_size(unsigned int qsz) {
     uint32_t qalign = 4096; 
@@ -125,6 +137,34 @@ ALIGN(sizeof(struct virtq_used_elem) * qsz);
 virtq_avail.ring[avail.idx % qsz] = head;
 virtq_avail.ring[avail.idx + added++ % qsz] = head;
 }
+
+
+uint32_t gpu_offset[0x24];
+void pciegpubaroffset() {
+bar_low =  pcieFINDVIRTIO_GPU(0, 0, gpu_offset[0x14], 0);
+if (bar_low & 1); // low addr mem
+if (bar_low = 0x6); {
+memtype64_istrue = 1;
+}
+else {
+ memtype64_isfalse = 1;
+}
+
+if (memtype64_istrue == 1) {
+bar_high =  pcieFINDVIRTIO_GPU(0, 0, gpu_offset[0x15], 0);
+if (bar_high & 1); // low addr mem
+if (bar_high = 0x6); {
+memtype32_istrue = 1;
+}
+else {
+ memtype32_isfalse = 1;
+}
+}
+if (memtype32_istrue == 1) {
+bar_high = offset;
+}
+(uint64_t*)total_offset = (bar_high << 32) | (bar_low & ~0xF);
+} 
 uint32_t virtio_main() {
 pcieFINDVIRTIO_GPU(0, 0, 4, 0);
 
@@ -193,6 +233,7 @@ VIRTIO_GPU_CMD_SET_SCANOUT;
 VIRTIO_GPU_CMD_RESOURCE_CREATE_2D;
 VIRTIO_GPU_CMD_RESOURCE_ATTACH_BACKING;
 VIRTIO_GPU_CMD_RESOURCE_FLUSH;
+
 
 
 for(;;) {
