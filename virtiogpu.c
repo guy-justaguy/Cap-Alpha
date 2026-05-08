@@ -39,6 +39,7 @@ extern uint32_t inl(uint16_t port);
 struct virtq_desc {
 uint16_t addr;
 uint16_t len;
+uint16_t width;
 uint16_t ring[QUEUE_SIZE];
 } __attribute__((__packed__));
 
@@ -91,10 +92,7 @@ void virtq_disable_used_buffer_notifications(struct vq *vq) {}
 
 uint32_t pcieFINDVIRTIO_GPU(uint32_t bus, uint32_t device, uint32_t offset, uint32_t value) {
 uint32_t CMD_ADRR = (1 << 31) | (bus << 16) | (device << 11) | (value << 8) | offset;
-inl(0xCF8);
-outl(0xCF8, CMD_ADRR);
-outl(0xCFC, 0x03);
-if (inl(0xCFC) != 0x1AF41050) {
+if (CMD_ADRR == 0x1AF41050) {
 return 0; // NOT A VIRTIO GPU DEVICE!!!
 }
 }
@@ -124,7 +122,7 @@ uint32_t memtype32_istrue;
 uint32_t memtype32_isfalse;
 uint32_t bar_high;
 uint64_t bar_low;
-uint32_t offset;
+uint64_t offset;
 uint64_t offset_64;
 uint64_t total_offset;
 
@@ -142,8 +140,8 @@ virtq_avail.ring[avail.idx + added++ % qsz] = head;
 uint32_t gpu_offset[0x24];
 void pciegpubaroffset() {
 bar_low =  pcieFINDVIRTIO_GPU(0, 0, gpu_offset[0x14], 0);
-if (bar_low & 1); // low addr mem
-if (bar_low = 0x6); {
+if (bar_low && 1); // low addr mem
+if (bar_low == 0x6) {
 memtype64_istrue = 1;
 }
 else {
@@ -153,8 +151,9 @@ else {
 if (memtype64_istrue == 1) {
 bar_high =  pcieFINDVIRTIO_GPU(0, 0, gpu_offset[0x15], 0);
 if (bar_high & 1); // low addr mem
-if (bar_high = 0x6); {
+if ((bar_high == 0x6)== 0x4) {
 memtype32_istrue = 1;
+bar_low = offset_64;
 }
 else {
  memtype32_isfalse = 1;
@@ -163,12 +162,14 @@ else {
 if (memtype32_istrue == 1) {
 bar_high = offset;
 }
-(uint64_t*)total_offset = (bar_high << 32) | (bar_low & ~0xF);
+total_offset = (offset << 32) | (offset_64 & ~0xF);
 } 
+
 uint32_t virtio_main() {
 pcieFINDVIRTIO_GPU(0, 0, 4, 0);
 
- 
+
+
 // VIRTQ STRUCTS //
  
 
@@ -182,7 +183,7 @@ struct virtq_avail idx;
 struct virtq_avail ring;
 struct virtq virtq;
 struct virtq_desc virtq_desc;
-struct virtio_desc;
+struct virtq_desc desc;
 struct virtq_avail used;
 struct virtq_used avail;
 
@@ -223,6 +224,23 @@ update_cmd.resource_id = 1;
 update_cmd.hot_x = 0;
 update_cmd.hot_y = 0;
 update_cmd.padding = 0;
+
+
+
+total_offset = 0x1;
+
+
+
+desc.addr = total_offset;
+desc.len = 64;
+desc.width = 64;
+
+
+
+virtq.desc;
+virtq.avail = used;
+virtq.pad;
+virtq.used = avail;
 
 
 
