@@ -37,10 +37,10 @@ extern uint32_t inl(uint16_t port);
 
 
 struct virtq_desc {
-uint16_t addr;
+uint64_t addr;
 uint16_t len;
 uint16_t width;
-uint16_t ring[QUEUE_SIZE];
+uint32_t ring[QUEUE_SIZE];
 } __attribute__((__packed__));
 
 
@@ -125,6 +125,7 @@ uint64_t bar_low;
 uint64_t offset;
 uint64_t offset_64;
 uint64_t total_offset;
+uint64_t doorbelladdr;
 
 
 
@@ -140,7 +141,7 @@ virtq_avail.ring[avail.idx + added++ % qsz] = head;
 uint32_t gpu_offset[0x24];
 void pciegpubaroffset() {
 bar_low =  pcieFINDVIRTIO_GPU(0, 0, gpu_offset[0x14], 0);
-if (bar_low && 1); // low addr mem
+if (bar_low & 1) // low addr mem
 if (bar_low == 0x6) {
 memtype64_istrue = 1;
 }
@@ -150,8 +151,8 @@ else {
 
 if (memtype64_istrue == 1) {
 bar_high =  pcieFINDVIRTIO_GPU(0, 0, gpu_offset[0x15], 0);
-if (bar_high & 1); // low addr mem
-if ((bar_high == 0x6)== 0x4) {
+if (bar_high & 1) // low addr mem
+if ((bar_high == 0x6) == 0x4) {
 memtype32_istrue = 1;
 bar_low = offset_64;
 }
@@ -175,6 +176,8 @@ pcieFINDVIRTIO_GPU(0, 0, 4, 0);
 
 
 struct vq *vq;
+
+vq = total_offset;
 virtq_disable_used_buffer_notifications(vq);
 
 struct virtq_desc virtq_used;
@@ -227,7 +230,7 @@ update_cmd.padding = 0;
 
 
 
-total_offset = 0x1;
+total_offset = (uint64_t)doorbelladdr;
 
 
 
