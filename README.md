@@ -10,7 +10,7 @@ if you want to compile please follow these instructions:
 4. Install LD if not available.
 5. Download the source code.
 6. Run
- `mkdir -p kernel`
+ `mkdir -p kernel` 
 (in any dir)
 9. Now extract the source code inside the new dir. Or run this command:
 `unzip name_of_source_code_file.zip  /kernel`.
