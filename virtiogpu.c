@@ -1,6 +1,5 @@
 /**INCLUDE**/
 
-
 #include <stdint.h>
 #include "virtiogpu.h"
 
@@ -15,7 +14,6 @@ extern uint32_t inl(uint16_t port);
 
 
 /**DEFINITIONS**/
-
 
 #define VIRTQ_DESC_F_AVAIL (1 << 7)
 #define VIRTQ_DESC_F_USED (1 << 15)
@@ -35,6 +33,29 @@ extern uint32_t inl(uint16_t port);
 #define le16_to_cpu(x) (x)
 
 
+/**GLOBAL SCOPE INTS**/
+
+uint32_t CMD_ADDR;
+uint64_t doorbelladdr;
+uint64_t vendorgpuistrue;
+uint64_t vendorgpuisfalse;
+uint64_t head;
+uint64_t added;
+uint32_t memtype64_istrue;
+uint32_t memtype64_isfalse;
+uint32_t memtype32_istrue;
+uint32_t memtype32_isfalse;
+uint32_t bar_high;
+uint64_t bar_low;
+uint64_t offset;
+uint64_t offset_64;
+uint64_t total_offset;
+uint64_t vq_deadweight;
+uint64_t qsz;
+
+
+
+/**VIRTQ STRUCTS**/
 
 struct virtq_desc {
 uint64_t addr;
@@ -85,15 +106,42 @@ uint32_t last_seen_used;
 
 
 
-void virtq_disable_used_buffer_notifications(struct vq *vq) {}
-
 
 /**FUNCS**/
 
+
+
+unsigned static virtq_size(unsigned int qsz) {
+uint32_t qalign = 4096; 
+return ALIGN(sizeof(struct virtq_desc)*qsz + sizeof(uint16_t)*(3 + qsz)) + 
+ALIGN(sizeof(struct virtq_used_elem) * qsz);
+}
+
+
+
+void helper() {
+struct virtq_avail avail;
+avail.ring[avail.idx % qsz] = head;
+avail.ring[(avail.idx + added++) % qsz] = head;
+}
+
+
+
+void virtq_disable_used_buffer_notifications(struct vq *vq) {}
+
+
+
 uint32_t pcieFINDVIRTIO_GPU(uint32_t bus, uint32_t device, uint32_t offset, uint32_t value) {
-uint32_t CMD_ADRR = (1 << 31) | (bus << 16) | (device << 11) | (value << 8) | offset;
-if (CMD_ADRR == 0x1AF41050) {
-return 0; // NOT A VIRTIO GPU DEVICE!!!
+CMD_ADDR = (1 << 31) | (bus << 16) | (device << 11) | (value << 8) | offset;
+outl(CMD_ADDR, 0xCF8);
+inl(0xCFC);
+if (inl(0xCFC) == 0x1050) {
+vendorgpuistrue = 1;
+return vendorgpuistrue; // VIRTIOGPU DEVICE FOUND!!!
+}
+else {
+vendorgpuisfalse = 1;
+return vendorgpuisfalse; // NOT VIRTIOGPU DEVICE!!!
 }
 }
 
@@ -105,45 +153,13 @@ void mb() {
 
 
 
-uint32_t padding = 0;
-uint32_t qalign = 4096;
-uint32_t qsz = QUEUE_SIZE;
-uint32_t added;
-uint16_t head;
-struct virtq_desc virtq_used;
-struct virtq_used virtq_avail;
-struct virtq_avail idx;
-struct virtq_avail ring;
-struct virtq_avail used;
-struct virtq_used avail;
-uint32_t memtype64_istrue;
-uint32_t memtype64_isfalse;
-uint32_t memtype32_istrue;
-uint32_t memtype32_isfalse;
-uint32_t bar_high;
-uint64_t bar_low;
-uint64_t offset;
-uint64_t offset_64;
-uint64_t total_offset;
-uint64_t doorbelladdr;
-
-
-
- unsigned static virtq_size(unsigned int qsz) {
-    uint32_t qalign = 4096; 
-return ALIGN(sizeof(struct virtq_desc)*qsz + sizeof(uint16_t)*(3 + qsz)) + 
-ALIGN(sizeof(struct virtq_used_elem) * qsz);
-virtq_avail.ring[avail.idx % qsz] = head;
-virtq_avail.ring[avail.idx + added++ % qsz] = head;
-}
-
-
 uint32_t gpu_offset[0x24];
 void pciegpubaroffset() {
 bar_low =  pcieFINDVIRTIO_GPU(0, 0, gpu_offset[0x14], 0);
-if (bar_low & 1) // low addr mem
+if (bar_low & 1) { // low addr mem6
 if (bar_low == 0x6) {
 memtype64_istrue = 1;
+}
 }
 else {
  memtype64_isfalse = 1;
@@ -151,10 +167,11 @@ else {
 
 if (memtype64_istrue == 1) {
 bar_high =  pcieFINDVIRTIO_GPU(0, 0, gpu_offset[0x15], 0);
-if (bar_high & 1) // low addr mem
-if ((bar_high == 0x6) == 0x4) {
+if (bar_high & 1) {// low addr mem
+if (bar_high == 0x6) {
 memtype32_istrue = 1;
 bar_low = offset_64;
+}
 }
 else {
  memtype32_isfalse = 1;
@@ -166,45 +183,35 @@ bar_high = offset;
 total_offset = (offset << 32) | (offset_64 & ~0xF);
 } 
 
-uint32_t virtio_main() {
-pcieFINDVIRTIO_GPU(0, 0, 4, 0);
+
+
+uint64_t virtio_main() {
+
+helper();
+
+
+
+pcieFINDVIRTIO_GPU(0, 0, 2, 0);
 
 
 
 // VIRTQ STRUCTS //
  
 
-
-struct vq *vq;
-
-vq = total_offset;
-virtq_disable_used_buffer_notifications(vq);
-
-struct virtq_desc virtq_used;
-struct virtq_used virtq_avail;
-struct virtq_avail idx;
-struct virtq_avail ring;
-struct virtq virtq;
-struct virtq_desc virtq_desc;
 struct virtq_desc desc;
-struct virtq_avail used;
-struct virtq_used avail;
-
-//  INTEGERS IN FUNC //
-
-uint32_t padding = 0;
-uint32_t qalign = 4096;
-uint32_t qsz = QUEUE_SIZE;
-uint32_t added;
-uint16_t head;
+struct virtq virtq;
+static struct virtq_avail avail __attribute__((aligned(4096)));
+static struct virtq_used used __attribute__((aligned(4096)));
 
 
 
-// VIRTIO-GPU STRUCTS //
+// VIRTQ COMMANDS //
+
+
 
 struct virtio_gpu_mem_entry cmd_mem_entry;
 cmd_mem_entry.addr = (uint64_t)cursorwhite;
-cmd_mem_entry.length = 16389;
+cmd_mem_entry.length = 16384;
 cmd_mem_entry.padding;
 
 
@@ -213,12 +220,24 @@ create_cmd.resource_id = 1;
 create_cmd.format = VIRTIO_GPU_FORMAT_B8G8R8A8_UNORM;
 create_cmd.width = 64;
 create_cmd.height = 64;
+create_cmd.hdr.type = VIRTIO_GPU_CMD_RESOURCE_CREATE_2D; 
 
 
 
 struct virtio_gpu_resource_attach_backing cmd_attach;
 cmd_attach.resource_id = 1;
 cmd_attach.nr_entries = 4;
+cmd_attach.hdr.type = VIRTIO_GPU_CMD_RESOURCE_ATTACH_BACKING;
+
+
+
+struct virtio_gpu_transfer_to_host_2d transfr_cmd;
+struct virtio_gpu_ctrl_hdr hdr;
+struct virtio_gpu_rect r;
+transfr_cmd.offset;
+transfr_cmd.resource_id;
+transfr_cmd.padding;
+transfr_cmd.hdr.type = VIRTIO_GPU_CMD_TRANSFER_TO_HOST_2D;
 
 
 
@@ -227,33 +246,30 @@ update_cmd.resource_id = 1;
 update_cmd.hot_x = 0;
 update_cmd.hot_y = 0;
 update_cmd.padding = 0;
+update_cmd.hdr.type = VIRTIO_GPU_CMD_RESOURCE_FLUSH;
 
+
+
+// VIRTQ SETUP //
 
 
 total_offset = (uint64_t)doorbelladdr;
 
 
 
-desc.addr = total_offset;
+struct vq *vq = (struct vq *)(uintptr_t)vq_deadweight;
+
+
+
+desc.addr =(uint64_t)&create_cmd;
 desc.len = 64;
 desc.width = 64;
 
 
 
-virtq.desc;
-virtq.avail = used;
+virtq.avail = avail;
 virtq.pad;
-virtq.used = avail;
-
-
-
-// VIRTIO-GPU COMMANDS //
-vq ->last_seen_used++;
-
-VIRTIO_GPU_CMD_SET_SCANOUT;
-VIRTIO_GPU_CMD_RESOURCE_CREATE_2D;
-VIRTIO_GPU_CMD_RESOURCE_ATTACH_BACKING;
-VIRTIO_GPU_CMD_RESOURCE_FLUSH;
+virtq.used = used;
 
 
 
@@ -266,4 +282,7 @@ break;
 virtq_disable_used_buffer_notifications(vq);
 }
 }
+mb();
+*(volatile uint32_t*)(total_offset) = 0;
+return total_offset;
 }
