@@ -119,14 +119,6 @@ ALIGN(sizeof(struct virtq_used_elem) * qsz);
 
 
 
-void helper() {
-struct virtq_avail avail;
-avail.ring[avail.idx % qsz] = head;
-avail.ring[(avail.idx + added++) % qsz] = head;
-}
-
-
-
 void virtq_disable_used_buffer_notifications(struct vq *vq) {}
 
 
@@ -186,10 +178,6 @@ total_offset = (offset << 32) | (offset_64 & ~0xF);
 
 
 uint64_t virtio_main() {
-
-helper();
-
-
 
 pcieFINDVIRTIO_GPU(0, 0, 2, 0);
 
@@ -251,6 +239,10 @@ update_cmd.hdr.type = VIRTIO_GPU_CMD_RESOURCE_FLUSH;
 
 
 // VIRTQ SETUP //
+
+avail.ring[avail.idx % qsz] = head;
+avail.ring[(avail.idx + added++) % qsz] = head;
+
 
 
 total_offset = (uint64_t)doorbelladdr;
