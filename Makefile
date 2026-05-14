@@ -1,31 +1,28 @@
-# Variables for your tools
-CC = gcc
-LD = ld --no-gc-sections
+# Gumball Kernel - Cap-Alpha (GCC Edition)
+CC = clang
 AS = nasm
+LD = ld.lld
 
-# Compiler flags from your terminal
-CFLAGS = -ffreestanding -fno-pie -mcmodel=kernel -mno-red-zone -fno-stack-protector -fno-builtin -nostdlib -fno-tree-loop-distribute-patterns -masm=intel
+# The "Chill" Flags
+CFLAGS = -ffreestanding -O2 -std=c11 -mcmodel=kernel -mno-red-zone -fno-stack-protector -fno-builtin -nostdlib -Wall -Wno-unused-variable -Wno-unused-function -masm=intel
 
-# All the objects needed for GumballKernel
-OBJS = pm_entry.o kernel.o printf.o memory.o malloc.o memcpy.o linux_syscall.o basicgpu.o shell.o strcmp.o idt.o idt_asm.o COURRMOV.o virtiogpu.o inb.o outb.o outl.o inl.o
+# Filtering out the glitch files from your ls output
+C_SOURCES = $(filter-out last_seen_used%vsz] 'ring[vq-', $(wildcard *.c))
+OBJ = $(C_SOURCES:.c=.o) pm_entry.o idt_asm.o
 
 all: kernel.elf
 
-# Rule to turn your new IDT bridge into an object
-idt_asm.o: idt_asm.asm
-	$(AS) -f elf64 idt_asm.asm -o idt_asm.o
+kernel.elf: $(OBJ)
+	$(LD) -T linker.ld -o kernel.elf $(OBJ)
 
-# Existing assembly rule
-pm_entry.o: pm_entry.asm
-	$(AS) -f elf64 pm_entry.asm -o pm_entry.o
-
-# Generic rule for all your C files
 %.o: %.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
-# Linking everything into the ELF
-kernel.elf: $(OBJS)
-	$(LD) -m elf_x86_64 -T linker.ld $(OBJS) -o kernel.elf
+pm_entry.o: pm_entry.asm
+	$(AS) -f elf64 pm_entry.asm -o pm_entry.o
+
+idt_asm.o: idt_asm.asm
+	$(AS) -f elf64 idt_asm.asm -o idt_asm.o
 
 clean:
-	rm -f *.o *.bin *.elf*
+	rm -f *.o kernel.elf
