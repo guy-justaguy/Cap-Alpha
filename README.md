@@ -5,7 +5,7 @@ Cap-Alpha is an operating system kernel based on the 64-bit UEFI architecture. T
 
 if you want to compile please follow these instructions:
 1. you have to be on Linux to use these commands. 
-2. Install GCC if not available. 
+2. Install Clang if not available. 
 3. Install Make if not available.
 4. Install LD if not available.
 5. Download the source code.
