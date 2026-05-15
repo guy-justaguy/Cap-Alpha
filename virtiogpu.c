@@ -52,6 +52,18 @@ uint64_t offset_64;
 uint64_t total_offset;
 uint64_t vq_deadweight;
 uint64_t qsz;
+uint64_t biosistrue;
+uint64_t uefistrue;
+uint64_t mmio_addr;
+uint64_t memtype64istrueuefi;
+uint64_t memtypeistrueuefi;
+uint64_t uefi_bar_low;
+uint64_t uefi_bar_high;
+uint64_t uefi_totaloffset;
+uint64_t uefioffset_64;
+uint64_t memtype64isfalseuefi;
+uint64_t memtypeisfalseuefi;
+uint64_t uefioffset;
 
 
 
@@ -123,7 +135,7 @@ void virtq_disable_used_buffer_notifications(struct vq *vq) {}
 
 
 
-uint32_t pcieFINDVIRTIO_GPU(uint32_t bus, uint32_t device, uint32_t offset, uint32_t value) {
+uint32_t PCIGRB_BIOSGPU(uint32_t bus, uint32_t device, uint32_t offset, uint32_t value) {
 CMD_ADDR = (1 << 31) | (bus << 16) | (device << 11) | (value << 8) | offset;
 outl(CMD_ADDR, 0xCF8);
 inl(0xCFC);
@@ -137,6 +149,24 @@ return vendorgpuisfalse; // NOT VIRTIOGPU DEVICE!!!
 }
 }
 
+
+
+uint64_t PCIGRB_UEFIGPU(uint32_t bus, uint32_t device, uint32_t offset, uint32_t value) {
+CMD_ADDR = (1 << 31) | (bus << 16) | (device << 11) | (value << 8) | offset;
+CMD_ADDR = mmio_addr;
+
+if (mmio_addr == 0x1050) {
+vendorgpuistrue = 1;
+return vendorgpuistrue; // VIRTIOGPU DEVICE FOUND!!!
+}
+else {
+vendorgpuisfalse = 1;
+return vendorgpuisfalse; // NOT VIRTIOGPU DEVICE!!!
+}
+}
+
+
+
 void mb() {
 
         __asm__ __volatile__ ("mfence" ::: "memory");
@@ -147,39 +177,55 @@ void mb() {
 
 uint32_t gpu_offset[0x24];
 void pciegpubaroffset() {
-bar_low =  pcieFINDVIRTIO_GPU(0, 0, gpu_offset[0x14], 0);
-if (bar_low & 1) { // low addr mem6
-if (bar_low == 0x6) {
-memtype64_istrue = 1;
+bar_low = PCIGRB_UEFIGPU(0, 0, gpu_offset[0x14], 0);
+if (bar_low == 1) { 
+        biosistrue = 1;
+}  // BIOS system!!! 
+else {
+uefistrue = 1;
 }
+if (bar_low == 0x6) {
+memtype64istrueuefi = 1;
 }
 else {
- memtype64_isfalse = 1;
+ memtype64isfalseuefi = 1;
 }
 
-if (memtype64_istrue == 1) {
-bar_high =  pcieFINDVIRTIO_GPU(0, 0, gpu_offset[0x15], 0);
-if (bar_high & 1) {// low addr mem
-if (bar_high == 0x6) {
-memtype32_istrue = 1;
-bar_low = offset_64;
+if (memtype64istrueuefi == 1) {
+uefi_bar_high =  PCIGRB_UEFIGPU(0, 0, gpu_offset[0x15], 0);
+if (uefi_bar_high & 1) {// low addr mem
+if (uefi_bar_high == 0x6) {
+memtypeistrueuefi = 1;
+uefi_bar_low = uefioffset_64;
 }
 }
 else {
- memtype32_isfalse = 1;
+ memtypeisfalseuefi = 1;
 }
 }
-if (memtype32_istrue == 1) {
-bar_high = offset;
-}
-total_offset = (offset << 32) | (offset_64 & ~0xF);
+if (memtypeistrueuefi == 1) {
+bar_high = uefioffset;
+uefi_totaloffset = (uefioffset << 32) | (uefioffset_64 & ~0xF);
 } 
+}
 
 
 
 uint64_t virtio_main() {
 
-pcieFINDVIRTIO_GPU(0, 0, 2, 0);
+pciegpubaroffset();
+
+
+
+if (biosistrue == 1) {
+PCIGRB_BIOSGPU(0, 0, 2, 0);
+}
+
+
+
+if (uefistrue == 1) {
+PCIGRB_UEFIGPU(0, 0, 2, 0);
+}
 
 
 
@@ -245,7 +291,15 @@ avail.ring[(avail.idx + added++) % qsz] = head;
 
 
 
+if (biosistrue == 1) {
+outl(doorbelladdr, avail.idx);
+}
+
+
+
+if (uefistrue == 1) {
 total_offset = (uint64_t)doorbelladdr;
+}
 
 
 
