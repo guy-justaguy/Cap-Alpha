@@ -254,7 +254,7 @@ create_cmd.resource_id = 1;
 create_cmd.format = VIRTIO_GPU_FORMAT_B8G8R8A8_UNORM;
 create_cmd.width = 64;
 create_cmd.height = 64;
-create_cmd.hdr.type = VIRTIO_GPU_CMD_RESOURCE_CREATE_2D; 
+create_cmd.hdr.type = VIRTIO_GPU_CMD_UPDATE_CURSOR; 
 
 
 
@@ -265,13 +265,10 @@ cmd_attach.hdr.type = VIRTIO_GPU_CMD_RESOURCE_ATTACH_BACKING;
 
 
 
-struct virtio_gpu_transfer_to_host_2d transfr_cmd;
-struct virtio_gpu_ctrl_hdr hdr;
-struct virtio_gpu_rect r;
-transfr_cmd.offset;
-transfr_cmd.resource_id;
-transfr_cmd.padding;
-transfr_cmd.hdr.type = VIRTIO_GPU_CMD_TRANSFER_TO_HOST_2D;
+struct virtio_gpu_set_scanout scnoutcomm;
+scnoutcomm.scanout_id = 0;
+scnoutcomm.resource_id = 1;
+scnoutcomm.hdr.type = VIRTIO_GPU_CMD_SET_SCANOUT;
 
 
 
@@ -280,7 +277,7 @@ update_cmd.resource_id = 1;
 update_cmd.hot_x = 0;
 update_cmd.hot_y = 0;
 update_cmd.padding = 0;
-update_cmd.hdr.type = VIRTIO_GPU_CMD_RESOURCE_FLUSH;
+update_cmd.hdr.type = VIRTIO_GPU_CMD_UPDATE_CURSOR;
 
 
 
